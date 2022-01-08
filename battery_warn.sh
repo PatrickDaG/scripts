@@ -1,8 +1,8 @@
 #!/bin/bash
 # small script to send notification on battery almost empty or full
-if ! test -d /sys/class/power_supply/BAT0; then
+if [[ ! -d /sys/class/power_supply/BAT0 ]]; then
 	echo ""
-	return
+	exit 1
 fi
 current=$(cat /sys/class/power_supply/BAT0/capacity)
 status=$(cat /sys/class/power_supply/BAT0/status)
