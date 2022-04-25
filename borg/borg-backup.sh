@@ -28,12 +28,12 @@ $2
 EOF
 }
 # to not leak any things
-source borg.conf \
+source /root/borg/borg.conf \
 	|| die "error sourcing config file"
 
-# todo
-notify "Have you thought to enable ssh mounting???"
-#sshfs "$SSH_REPO": /media/backup
+umount -l /media/backup
+sshfs -o idmap=user "$SSH_REPO" /media/backup \
+	|| die "error in ssh mount"
 
 for i in "${BORG_DATASETS[@]}"
 do
@@ -53,9 +53,10 @@ do
 		|| die "error in changing into snap path"
 	# backup everything
 	RESULT=$(borg create --stats --exclude-caches --compression zstd \
-		"::${i//\//%}@$SNAPSHOT" "$SNAP_PATH" \
+		"::${i//\//"#"}@$SNAPSHOT" "$SNAP_PATH" \
 		2>&1 ) \
-		|| die "error in borg create"
+		|| die "error in borg create \n \
+			$RESULT"
 	notify "Finished backup of $i"
 	sendlogmail "borg backup finished" "$RESULT"
 	# prune old files
@@ -69,9 +70,11 @@ do
 		"::" \
 		2>&1
 	) \
-		|| die "error in borg prune"
+		|| die "error in borg prune\n \
+		$RESULT"
 	sendlogmail "borg prune finished" "$RESULT"
 	notify "Finished prune of $i"
 done
-#fusermount3 -u /media/backup
+
+umount /media/backup
 
