@@ -3,22 +3,6 @@
 set -uo pipefail
 #Should really try not to leak shit and
 
-function notify() {
-	curl\
-		-H "Title: Borg-backup"\
-		-d "$1"\
-		https://ntfy.lel.lol/borg-backup
-}
-
-function die() {
-	curl\
-		-H "Title: Borg-backup"\
-		-H "Priority: urgent"\
-		-d "$1"\
-		https://ntfy.lel.lol/borg-backup
-	exit 1
-}
-
 function sendlogmail() {
 	sendmail -t patrickdgro@gmail.com <<EOF
 From: server@grossmannpoing.de
@@ -39,13 +23,11 @@ for i in "${BORG_DATASETS[@]}"
 do
 	DATE=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 	SNAPSHOT="b""o""r""g""-""$DATE"
-	notify "Started backup of $i"
 	zfs snapshot "$i""@""$SNAPSHOT" \
 		|| die "error in snapshot creation"
 	MOUNT_PATH=$(zfs get mountpoint -H -o value "$i") \
 		|| die "error in getting mountpoint"
 	if [[ $MOUNT_PATH == "none" ]];then
-		notify "$i not mounted"
 		continue
 	fi
 	SNAP_PATH="$MOUNT_PATH/.zfs/snapshot/$SNAPSHOT"
@@ -57,7 +39,6 @@ do
 		2>&1 ) \
 		|| die "error in borg create \n \
 			$RESULT"
-	notify "Finished backup of $i"
 	sendlogmail "borg backup finished" "$RESULT"
 	# prune old files
 	RESULT=$(borg prune \
@@ -73,7 +54,6 @@ do
 		|| die "error in borg prune\n \
 		$RESULT"
 	sendlogmail "borg prune finished" "$RESULT"
-	notify "Finished prune of $i"
 done
 
 umount /media/backup
